@@ -13,7 +13,6 @@
   const installBanner = document.getElementById('installBanner');
   const installBtn = document.getElementById('installBtn');
 
-  // Offline indicator
   function updateOnlineStatus() {
     offlineBadge.style.display = navigator.onLine ? 'none' : 'inline-flex';
   }
@@ -21,7 +20,6 @@
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 
-  // Install prompt
   let deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -31,7 +29,7 @@
   installBtn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    await deferredPrompt.userChoice;
     deferredPrompt = null;
     installBanner.classList.remove('show');
   });
@@ -40,22 +38,18 @@
     deferredPrompt = null;
   });
 
-  // Parse questions: prefer blank-line blocks so multi-line questions stay intact
+  // Split on blank lines first (keeps multi-line questions together)
   function parseQuestions(raw) {
-    const text = raw.replace(/\r\n/g, '\n').trim();
+    const text = (raw || '').replace(/\r\n/g, '\n').trim();
     if (!text) return [];
-
     const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
     if (blocks.length > 1) return blocks;
-
-    // Fallback: one question per non-empty line
     return text.split('\n').map(l => l.trim()).filter(Boolean);
   }
 
   function generatePDF() {
     const title = (titleEl.value || 'Question Bank').trim();
-    const raw = questionsEl.value;
-    const questions = parseQuestions(raw);
+    const questions = parseQuestions(questionsEl.value);
 
     if (questions.length === 0) {
       statusEl.textContent = 'Please enter at least one question.';
@@ -64,9 +58,9 @@
     }
 
     const fontSize = parseFloat(fontSizeEl.value) || 8;
-    const marginMm = parseFloat(marginEl.value) || 10;
-    const colGapMm = parseFloat(colGapEl.value) || 6;
-    const lineHeightMult = parseFloat(lineHeightEl.value) || 1.25;
+    const margin = parseFloat(marginEl.value) || 10;
+    const colGap = parseFloat(colGapEl.value) || 6;
+    const lhMult = parseFloat(lineHeightEl.value) || 1.25;
 
     generateBtn.disabled = true;
     statusEl.textContent = 'Generating…';
@@ -74,137 +68,112 @@
 
     setTimeout(() => {
       try {
-        const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const pageW = doc.internal.pageSize.getWidth();   // 210
         const pageH = doc.internal.pageSize.getHeight();  // 297
 
-        const margin = marginMm;
         const usableW = pageW - 2 * margin;
-        const colGap = colGapMm;
         const colW = (usableW - colGap) / 2;
-
         const leftX = margin;
         const rightX = margin + colW + colGap;
-        const midX = margin + colW + colGap / 2; // for vertical divider
+        const midX = margin + colW + colGap / 2;
 
-        // ---- Title (compact, centered) ----
+        // ---- Title ----
         doc.setFont('helvetica', 'bold');
-        const titleSize = Math.max(fontSize + 1.5, 9);
+        const titleSize = Math.min(Math.max(fontSize + 2, 9), 12);
         doc.setFontSize(titleSize);
         const titleLines = doc.splitTextToSize(title, usableW);
-        let y = margin;
+        let titleBottom = margin;
         titleLines.forEach(line => {
-          doc.text(line, pageW / 2, y, { align: 'center' });
-          y += titleSize * 0.38;
+          doc.text(line, pageW / 2, titleBottom, { align: 'center' });
+          titleBottom += titleSize * 0.4;
         });
-        y += 1.5;
+        titleBottom += 1.2;
 
-        // thin separator under title
-        doc.setDrawColor(160);
-        doc.setLineWidth(0.25);
-        doc.line(margin, y, pageW - margin, y);
-        y += 2.5;
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.2);
+        doc.line(margin, titleBottom, pageW - margin, titleBottom);
+        titleBottom += 2.2;
 
-        const bodyFontSize = fontSize;
-        // 1 pt ≈ 0.352778 mm
-        const lineHeightMm = bodyFontSize * 0.352778 * lineHeightMult;
+        // Body metrics
+        const lineH = fontSize * 0.352778 * lhMult; // pt → mm
+        const bottomLimit = pageH - margin - 5;     // leave space for page nº
+        const gapAfterQ = lineH * 0.4;
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(bodyFontSize);
-        doc.setTextColor(0);
+        doc.setFontSize(fontSize);
+        doc.setTextColor(20);
 
-        // ============================================================
-        // TRUE 2-COLUMN FLOW (newspaper style)
-        // Fill left column top→bottom, then right column, then next page.
-        // Prefer keeping a whole question in one column when possible.
-        // ============================================================
+        // =====================================================
+        // Reliable 2-column cursor
+        // =====================================================
+        let col = 0;                    // 0 = left, 1 = right
+        let y = [titleBottom, titleBottom];
 
-        let currentCol = 0;               // 0 = left, 1 = right
-        let colY = [y, y];                // current Y for each column
-        const bottomLimit = pageH - margin - 4; // leave room for page number
+        function colX() { return col === 0 ? leftX : rightX; }
 
-        function drawColumnDivider() {
-          // subtle vertical line between columns
-          doc.setDrawColor(200);
-          doc.setLineWidth(0.15);
-          const top = (doc.internal.getNumberOfPages() === 1) ? y : margin;
-          doc.line(midX, top, midX, bottomLimit);
+        function drawDivider(pageTop) {
+          doc.setDrawColor(190);
+          doc.setLineWidth(0.12);
+          doc.line(midX, pageTop, midX, bottomLimit);
         }
 
-        function newPage() {
-          drawColumnDivider(); // finish previous page
-          doc.addPage();
-          colY = [margin, margin];
-          currentCol = 0;
-          // divider will be drawn at end of this page or when leaving
-        }
+        // first page divider
+        drawDivider(titleBottom);
 
-        // Pre-draw divider for first page
-        drawColumnDivider();
-
-        questions.forEach((q, qIdx) => {
-          // Number the question for clarity (optional but useful)
-          const numbered = (qIdx + 1) + '. ' + q;
-          const lines = doc.splitTextToSize(numbered, colW - 0.5);
-
-          const needed = lines.length * lineHeightMm + lineHeightMm * 0.3; // + small gap
-          const remaining = bottomLimit - colY[currentCol];
-
-          // If the whole question does not fit and we have almost no room left,
-          // move to the other column / next page first.
-          if (needed > remaining && remaining < lineHeightMm * 1.8) {
-            if (currentCol === 0) {
-              currentCol = 1;
-            } else {
-              newPage();
-              drawColumnDivider();
-            }
+        function advanceColumnOrPage() {
+          if (col === 0) {
+            col = 1;
+            // right column starts at same top as left did on this page
+          } else {
+            // finish current page divider already drawn
+            doc.addPage();
+            col = 0;
+            y = [margin, margin];
+            drawDivider(margin);
           }
+        }
 
-          // Write every line of this question
-          lines.forEach((line) => {
-            // Still not enough room for even one more line?
-            if (colY[currentCol] + lineHeightMm > bottomLimit) {
-              if (currentCol === 0) {
-                currentCol = 1;
-              } else {
-                newPage();
-                drawColumnDivider();
-              }
-            }
-
-            const x = currentCol === 0 ? leftX : rightX;
-            doc.text(line, x, colY[currentCol]);
-            colY[currentCol] += lineHeightMm;
-          });
-
-          // small breathing space after each question
-          colY[currentCol] += lineHeightMm * 0.35;
+        // Pre-split every question into lines that fit the column width
+        const prepared = questions.map((q, i) => {
+          const text = (i + 1) + '. ' + q;
+          return doc.splitTextToSize(text, colW - 1);
         });
 
-        // Final divider on last page
-        drawColumnDivider();
+        prepared.forEach((lines) => {
+          const blockH = lines.length * lineH + gapAfterQ;
+
+          // Does the whole block fit in the remaining space of the current column?
+          if (y[col] + blockH > bottomLimit + 0.5) {
+            // try the other column / next page
+            advanceColumnOrPage();
+          }
+
+          // Now write line by line (in case a single question is extremely long)
+          lines.forEach(line => {
+            if (y[col] + lineH > bottomLimit) {
+              advanceColumnOrPage();
+            }
+            doc.text(line, colX(), y[col]);
+            y[col] += lineH;
+          });
+
+          y[col] += gapAfterQ;
+        });
 
         // ---- Page numbers ----
-        const totalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-          doc.setPage(i);
-          doc.setFont('helvetica', 'normal');
+        const total = doc.internal.getNumberOfPages();
+        for (let p = 1; p <= total; p++) {
+          doc.setPage(p);
           doc.setFontSize(7);
-          doc.setTextColor(110);
-          doc.text(i + ' / ' + totalPages, pageW / 2, pageH - 4, { align: 'center' });
-          doc.setTextColor(0);
+          doc.setTextColor(120);
+          doc.text(p + ' / ' + total, pageW / 2, pageH - 3.5, { align: 'center' });
         }
 
-        const safeName = title.replace(/[^\w\s-]/g, '').trim().slice(0, 40) || 'question-bank';
-        doc.save(safeName + '.pdf');
+        const safe = title.replace(/[^\w\s\-]/g, '').trim().slice(0, 40) || 'question-bank';
+        doc.save(safe + '.pdf');
 
-        statusEl.textContent = `Done — ${questions.length} questions • ${totalPages} page(s) • 2-column`;
+        statusEl.textContent = `Done — ${questions.length} questions • ${total} page(s) • 2-column`;
         statusEl.className = 'status ok';
       } catch (err) {
         console.error(err);
@@ -213,22 +182,21 @@
       } finally {
         generateBtn.disabled = false;
       }
-    }, 40);
+    }, 30);
   }
 
   generateBtn.addEventListener('click', generatePDF);
 
-  // Load any previously saved draft
+  // Draft persistence
   try {
     const saved = localStorage.getItem('qb-draft');
     if (saved) {
-      const data = JSON.parse(saved);
-      if (data.title) titleEl.value = data.title;
-      if (data.questions) questionsEl.value = data.questions;
+      const d = JSON.parse(saved);
+      if (d.title) titleEl.value = d.title;
+      if (d.questions) questionsEl.value = d.questions;
     }
   } catch (_) {}
 
-  // Auto-save draft
   function saveDraft() {
     try {
       localStorage.setItem('qb-draft', JSON.stringify({
