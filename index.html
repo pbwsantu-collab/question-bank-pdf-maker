@@ -115,7 +115,7 @@
 
     <header>
       <h1>Question Bank PDF Maker</h1>
-      <p class="subtitle">2 side-by-side boxes • Math & Science ready • Offline</p>
+      <p class="subtitle">Single or Double column • Math & Science ready • Offline</p>
     </header>
 
     <div class="card">
@@ -165,11 +165,18 @@
           <label for="margin">Page margin (mm)</label>
           <select id="margin">
             <option value="8">8 – minimal</option>
-            <option value="10" selected>10 – tight</option>
-            <option value="12">12 – normal</option>
+            <option value="10">10 – tight</option>
+            <option value="12" selected>12 – normal</option>
             <option value="15">15 – comfortable</option>
           </select>
         </div>
+      </div>
+      <div style="margin-top:0.75rem">
+        <label for="layout">Layout</label>
+        <select id="layout">
+          <option value="single">Single column (full width) — most reliable</option>
+          <option value="double" selected>Double column (two boxes)</option>
+        </select>
       </div>
       <div class="row" style="margin-top:0.75rem">
         <div>
@@ -198,14 +205,13 @@
     <p class="status" id="status"></p>
 
     <footer>
-      Two boxes side-by-side • Works offline • Math & Science symbols supported
+      Single or Double column • Works offline • Math & Science symbols supported
     </footer>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="app.js"></script>
   <script>
-    // Symbol insertion buttons
     document.getElementById('symbolBar').addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-s]');
       if (!btn) return;
