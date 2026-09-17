@@ -47,10 +47,17 @@
     return text.split('\n').map(l => l.trim()).filter(Boolean);
   }
 
+  // If the question already starts with a number (1.  2)  3-  etc.), don't add another
+  function formatQuestion(q, index) {
+    const alreadyNumbered = /^\s*\d+[\.\)\-\:]\s*/.test(q);
+    if (alreadyNumbered) return q.trim();
+    return (index + 1) + '. ' + q.trim();
+  }
+
   function generatePDF() {
     const title = (titleEl.value || 'Question Bank').trim();
     const questions = parseQuestions(questionsEl.value);
-    const layout = (layoutEl && layoutEl.value) || 'double';
+    const layout = (layoutEl && layoutEl.value) || 'single';
 
     if (questions.length === 0) {
       statusEl.textContent = 'Please enter at least one question.';
@@ -73,7 +80,7 @@
         const pageW = 210;
         const pageH = 297;
 
-        // ---- Title ----
+        // Title
         doc.setFont('helvetica', 'bold');
         const titleSize = Math.min(Math.max(fontSize + 2, 10), 13);
         doc.setFontSize(titleSize);
@@ -88,22 +95,22 @@
         doc.line(margin, yPos, pageW - margin, yPos);
         yPos += 3;
 
-        // Fixed, rounded line height for even spacing (no fractional jitter)
+        // Even line height
         const lineH = Math.round(fontSize * 0.352778 * lhMult * 10) / 10;
         const bottomLimit = pageH - margin - 8;
-        const qGap = Math.round(lineH * 0.45 * 10) / 10;
+        const qGap = Math.round(lineH * 0.5 * 10) / 10;
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(fontSize);
         doc.setTextColor(0);
 
-        // ========== SINGLE COLUMN ==========
+        // ========== SINGLE COLUMN (most reliable) ==========
         if (layout === 'single') {
           const textW = pageW - 2 * margin - 8;
           let y = yPos;
 
           questions.forEach((q, i) => {
-            const lines = doc.splitTextToSize((i + 1) + '. ' + q, textW);
+            const lines = doc.splitTextToSize(formatQuestion(q, i), textW);
             const blockH = lines.length * lineH + qGap;
             if (y + blockH > bottomLimit) {
               doc.addPage();
@@ -120,23 +127,21 @@
         } else {
           const usableW = pageW - 2 * margin;
           const boxW = (usableW - colGap) / 2;
-          const pad = 4;
-          // Conservative width so letters never crowd the border
-          const textW = Math.floor((boxW - 2 * pad) * 0.90);
+          const pad = 4.5;
+          const textW = Math.floor((boxW - 2 * pad) * 0.92);
           const leftX = margin + pad;
           const rightX = margin + boxW + colGap + pad;
 
-          // Pre-wrap every question
-          const allBlocks = questions.map((q, i) => ({
-            num: i + 1,
-            lines: doc.splitTextToSize((i + 1) + '. ' + q, textW),
-            height: 0
-          }));
-          allBlocks.forEach(b => {
-            b.height = b.lines.length * lineH + qGap;
+          // Prepare blocks with smart numbering
+          const allBlocks = questions.map((q, i) => {
+            const lines = doc.splitTextToSize(formatQuestion(q, i), textW);
+            return {
+              lines,
+              height: lines.length * lineH + qGap
+            };
           });
 
-          // Balance by height (not just count) so both columns look even
+          // Balance by height
           const leftBlocks = [];
           const rightBlocks = [];
           let leftH = 0, rightH = 0;
@@ -238,7 +243,7 @@
       localStorage.setItem('qb-draft', JSON.stringify({
         title: titleEl.value,
         questions: questionsEl.value,
-        layout: layoutEl ? layoutEl.value : 'double'
+        layout: layoutEl ? layoutEl.value : 'single'
       }));
     } catch (_) {}
   }
