@@ -115,7 +115,7 @@
 
     <header>
       <h1>Question Bank PDF Maker</h1>
-      <p class="subtitle">Single or Double column • Math & Science ready • Offline</p>
+      <p class="subtitle">Single column recommended • Double column available • Offline</p>
     </header>
 
     <div class="card">
@@ -128,6 +128,7 @@
       <textarea id="questions" placeholder="Paste questions here. Separate each question with a blank line.\n\nExamples:\nFind the value of √(16 + 9)\n\nWhat is the formula for kinetic energy?\nK.E. = ½ mv²\n\nWrite the electronic configuration of Sodium (Na).\n\nExplain the process of photosynthesis."></textarea>
       <p class="hint">
         • Put a <strong>blank line</strong> between questions so multi-line ones stay together.<br>
+        • If your questions are already numbered (1. 2. 3.), the app will not add extra numbers.<br>
         • Math & science symbols (√ π ² ³ ≤ ≥ → Δ etc.) are preserved.
       </p>
       <div class="symbols" id="symbolBar">
@@ -174,8 +175,8 @@
       <div style="margin-top:0.75rem">
         <label for="layout">Layout</label>
         <select id="layout">
-          <option value="single">Single column (full width) — most reliable</option>
-          <option value="double" selected>Double column (two boxes)</option>
+          <option value="single" selected>Single column (full width) — recommended</option>
+          <option value="double">Double column (two boxes)</option>
         </select>
       </div>
       <div class="row" style="margin-top:0.75rem">
@@ -205,7 +206,7 @@
     <p class="status" id="status"></p>
 
     <footer>
-      Single or Double column • Works offline • Math & Science symbols supported
+      Single column recommended • Works offline • Math & Science symbols supported
     </footer>
   </div>
 
