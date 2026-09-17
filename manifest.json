@@ -1,0 +1,18 @@
+{
+  "name": "Question Bank PDF Maker",
+  "short_name": "QB PDF",
+  "description": "Create print-ready, space-efficient 2-column question bank PDFs. Works fully offline.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#1a1a2e",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
