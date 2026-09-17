@@ -77,9 +77,8 @@
         doc.setFont('helvetica', 'bold');
         const titleSize = Math.min(Math.max(fontSize + 2, 10), 13);
         doc.setFontSize(titleSize);
-        const titleLines = doc.splitTextToSize(title, pageW - 2 * margin - 4);
         let yPos = margin + 1;
-        titleLines.forEach(line => {
+        doc.splitTextToSize(title, pageW - 2 * margin - 4).forEach(line => {
           doc.text(line, pageW / 2, yPos, { align: 'center' });
           yPos += titleSize * 0.42;
         });
@@ -89,100 +88,108 @@
         doc.line(margin, yPos, pageW - margin, yPos);
         yPos += 3;
 
-        const lineH = Math.max(fontSize * 0.352778 * lhMult, fontSize * 0.48);
-        const bottomLimit = pageH - margin - 7;
-        const qGap = lineH * 0.55;
+        const lineH = Math.max(fontSize * 0.352778 * lhMult, fontSize * 0.5);
+        const bottomLimit = pageH - margin - 8;
+        const qGap = lineH * 0.5;
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(fontSize);
         doc.setTextColor(20);
 
+        // ========== SINGLE COLUMN ==========
         if (layout === 'single') {
-          // ===================== SINGLE COLUMN =====================
-          const textW = pageW - 2 * margin - 4;
+          const textW = pageW - 2 * margin - 6;
           let y = yPos;
 
           questions.forEach((q, i) => {
-            const txt = (i + 1) + '. ' + q;
-            const lines = doc.splitTextToSize(txt, textW);
-            const needed = lines.length * lineH + qGap;
-
-            if (y + needed > bottomLimit) {
+            const lines = doc.splitTextToSize((i + 1) + '. ' + q, textW);
+            if (y + lines.length * lineH + qGap > bottomLimit) {
               doc.addPage();
               y = margin;
             }
-
             lines.forEach(line => {
               if (y + lineH > bottomLimit) {
                 doc.addPage();
                 y = margin;
               }
-              doc.text(line, margin + 2, y);
+              doc.text(line, margin + 3, y);
               y += lineH;
             });
             y += qGap;
           });
 
+        // ========== DOUBLE COLUMN (split questions in half) ==========
         } else {
-          // ===================== DOUBLE COLUMN (two boxes) =====================
           const usableW = pageW - 2 * margin;
           const boxW = (usableW - colGap) / 2;
-          // Very conservative: plenty of padding + 15% safety on text width
-          const boxPad = 4;
-          const textW = (boxW - 2 * boxPad) * 0.85;
+          const pad = 3.5;
+          const textW = Math.floor((boxW - 2 * pad) * 0.88);
+          const leftX = margin + pad;
+          const rightX = margin + boxW + colGap + pad;
 
-          const leftBoxX = margin;
-          const rightBoxX = margin + boxW + colGap;
+          // Split the question list into two halves
+          const mid = Math.ceil(questions.length / 2);
+          const leftList = questions.slice(0, mid);
+          const rightList = questions.slice(mid);
 
-          let col = 0;
-          let colY = [yPos + boxPad, yPos + boxPad];
-          let pageTop = yPos;
-
-          function xOf(c) {
-            return (c === 0 ? leftBoxX : rightBoxX) + boxPad;
+          function makeBlocks(list, startNum) {
+            return list.map((q, i) =>
+              doc.splitTextToSize((startNum + i) + '. ' + q, textW)
+            );
           }
+          const leftBlocks = makeBlocks(leftList, 1);
+          const rightBlocks = makeBlocks(rightList, mid + 1);
+
+          let lIdx = 0;
+          let rIdx = 0;
+          let pageTop = yPos;
 
           function drawBoxes(top) {
             const h = bottomLimit - top;
-            doc.setDrawColor(150);
-            doc.setLineWidth(0.4);
-            doc.rect(leftBoxX, top, boxW, h);
-            doc.rect(rightBoxX, top, boxW, h);
+            doc.setDrawColor(140);
+            doc.setLineWidth(0.35);
+            doc.rect(margin, top, boxW, h);
+            doc.rect(margin + boxW + colGap, top, boxW, h);
           }
 
-          drawBoxes(pageTop);
+          while (lIdx < leftBlocks.length || rIdx < rightBlocks.length) {
+            drawBoxes(pageTop);
+            let ly = pageTop + pad;
+            let ry = pageTop + pad;
 
-          function advance() {
-            if (col === 0) {
-              col = 1;
-            } else {
+            // Fill left box on this page
+            while (lIdx < leftBlocks.length) {
+              const lines = leftBlocks[lIdx];
+              const needed = lines.length * lineH + qGap;
+              if (ly + needed > bottomLimit) break;
+              lines.forEach(line => {
+                doc.text(line, leftX, ly);
+                ly += lineH;
+              });
+              ly += qGap;
+              lIdx++;
+            }
+
+            // Fill right box on this page
+            while (rIdx < rightBlocks.length) {
+              const lines = rightBlocks[rIdx];
+              const needed = lines.length * lineH + qGap;
+              if (ry + needed > bottomLimit) break;
+              lines.forEach(line => {
+                doc.text(line, rightX, ry);
+                ry += lineH;
+              });
+              ry += qGap;
+              rIdx++;
+            }
+
+            if (lIdx < leftBlocks.length || rIdx < rightBlocks.length) {
               doc.addPage();
               pageTop = margin;
-              col = 0;
-              colY = [pageTop + boxPad, pageTop + boxPad];
-              drawBoxes(pageTop);
+            } else {
+              break;
             }
           }
-
-          const blocks = questions.map((q, i) => {
-            const txt = (i + 1) + '. ' + q;
-            return doc.splitTextToSize(txt, textW);
-          });
-
-          blocks.forEach(lines => {
-            const needed = lines.length * lineH + qGap;
-            if (colY[col] + needed > bottomLimit - boxPad) {
-              advance();
-            }
-            lines.forEach(line => {
-              if (colY[col] + lineH > bottomLimit - boxPad) {
-                advance();
-              }
-              doc.text(line, xOf(col), colY[col]);
-              colY[col] += lineH;
-            });
-            colY[col] += qGap;
-          });
         }
 
         // Page numbers
