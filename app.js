@@ -40,19 +40,13 @@
     deferredPrompt = null;
   });
 
-  // Parse questions: preserve every word.
-  // Strategy: split on double newlines for multi-line blocks,
-  // otherwise treat consecutive non-empty lines as one question if they look like continuation,
-  // but simplest reliable way: split by \n\n first, then single lines that remain.
+  // Parse questions: prefer blank-line blocks so multi-line questions stay intact
   function parseQuestions(raw) {
     const text = raw.replace(/\r\n/g, '\n').trim();
     if (!text) return [];
 
-    // Prefer blank-line separated blocks (preserves multi-line questions)
     const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
-    if (blocks.length > 1) {
-      return blocks;
-    }
+    if (blocks.length > 1) return blocks;
 
     // Fallback: one question per non-empty line
     return text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -78,7 +72,6 @@
     statusEl.textContent = 'Generating…';
     statusEl.className = 'status';
 
-    // Use setTimeout so UI can update
     setTimeout(() => {
       try {
         const doc = new jsPDF({
@@ -97,111 +90,121 @@
 
         const leftX = margin;
         const rightX = margin + colW + colGap;
+        const midX = margin + colW + colGap / 2; // for vertical divider
 
-        // Compact title
+        // ---- Title (compact, centered) ----
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(Math.max(fontSize + 2, 10));
+        const titleSize = Math.max(fontSize + 1.5, 9);
+        doc.setFontSize(titleSize);
         const titleLines = doc.splitTextToSize(title, usableW);
         let y = margin;
         titleLines.forEach(line => {
           doc.text(line, pageW / 2, y, { align: 'center' });
-          y += (fontSize + 2) * 0.4;
+          y += titleSize * 0.38;
         });
-        y += 2; // small gap after title
+        y += 1.5;
 
-        // thin line
-        doc.setDrawColor(180);
-        doc.setLineWidth(0.2);
+        // thin separator under title
+        doc.setDrawColor(160);
+        doc.setLineWidth(0.25);
         doc.line(margin, y, pageW - margin, y);
-        y += 3;
+        y += 2.5;
 
         const bodyFontSize = fontSize;
-        const lineH = bodyFontSize * 0.352778 * lineHeightMult; // pt to mm approx * multiplier
-        // more accurate: 1 pt = 0.352778 mm
+        // 1 pt ≈ 0.352778 mm
         const lineHeightMm = bodyFontSize * 0.352778 * lineHeightMult;
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(bodyFontSize);
+        doc.setTextColor(0);
 
-        // Two columns: we fill left then right, page by page
-        // Collect all text lines first with their source question index for numbering optional
+        // ============================================================
+        // TRUE 2-COLUMN FLOW (newspaper style)
+        // Fill left column top→bottom, then right column, then next page.
+        // Prefer keeping a whole question in one column when possible.
+        // ============================================================
 
-        // We will flow text continuously across columns and pages
-        let currentCol = 0; // 0 = left, 1 = right
-        let colY = [y, y];  // y position for each column on current page
+        let currentCol = 0;               // 0 = left, 1 = right
+        let colY = [y, y];                // current Y for each column
+        const bottomLimit = pageH - margin - 4; // leave room for page number
+
+        function drawColumnDivider() {
+          // subtle vertical line between columns
+          doc.setDrawColor(200);
+          doc.setLineWidth(0.15);
+          const top = (doc.internal.getNumberOfPages() === 1) ? y : margin;
+          doc.line(midX, top, midX, bottomLimit);
+        }
 
         function newPage() {
+          drawColumnDivider(); // finish previous page
           doc.addPage();
           colY = [margin, margin];
           currentCol = 0;
+          // divider will be drawn at end of this page or when leaving
         }
 
-        function ensureSpace(needed) {
-          if (colY[currentCol] + needed > pageH - margin) {
-            if (currentCol === 0) {
-              currentCol = 1;
-              // right column starts at same top as left did on this page? No – continue from top of right
-              // Actually for newspaper style we usually fill left completely then right.
-              // Simple approach: when left is full, switch to right; when right full, new page + left.
-            } else {
-              newPage();
-            }
-          }
-        }
+        // Pre-draw divider for first page
+        drawColumnDivider();
 
-        // Better algorithm: process question by question, place each question's lines into current column,
-        // if a question doesn't fit, move to next column / page (avoid splitting mid-question if possible,
-        // but for very long questions allow split).
+        questions.forEach((q, qIdx) => {
+          // Number the question for clarity (optional but useful)
+          const numbered = (qIdx + 1) + '. ' + q;
+          const lines = doc.splitTextToSize(numbered, colW - 0.5);
 
-        questions.forEach((q, idx) => {
-          // Prepare lines for this question
-          const lines = doc.splitTextToSize(q, colW);
+          const needed = lines.length * lineHeightMm + lineHeightMm * 0.3; // + small gap
+          const remaining = bottomLimit - colY[currentCol];
 
-          // Check if whole question fits in remaining space of current column
-          const needed = lines.length * lineHeightMm;
-          const remaining = pageH - margin - colY[currentCol];
-
-          if (needed > remaining && remaining < lineHeightMm * 2) {
-            // almost empty remaining → switch column/page
+          // If the whole question does not fit and we have almost no room left,
+          // move to the other column / next page first.
+          if (needed > remaining && remaining < lineHeightMm * 1.8) {
             if (currentCol === 0) {
               currentCol = 1;
             } else {
               newPage();
+              drawColumnDivider();
             }
           }
 
-          // Now write lines, splitting across columns/pages if necessary
-          lines.forEach((line, lineIdx) => {
-            if (colY[currentCol] + lineHeightMm > pageH - margin) {
+          // Write every line of this question
+          lines.forEach((line) => {
+            // Still not enough room for even one more line?
+            if (colY[currentCol] + lineHeightMm > bottomLimit) {
               if (currentCol === 0) {
                 currentCol = 1;
               } else {
                 newPage();
+                drawColumnDivider();
               }
             }
+
             const x = currentCol === 0 ? leftX : rightX;
             doc.text(line, x, colY[currentCol]);
             colY[currentCol] += lineHeightMm;
           });
 
-          // small gap after each question
+          // small breathing space after each question
           colY[currentCol] += lineHeightMm * 0.35;
         });
 
-        // Footer page numbers
+        // Final divider on last page
+        drawColumnDivider();
+
+        // ---- Page numbers ----
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
           doc.setPage(i);
+          doc.setFont('helvetica', 'normal');
           doc.setFontSize(7);
-          doc.setTextColor(120);
-          doc.text(String(i) + ' / ' + totalPages, pageW / 2, pageH - 5, { align: 'center' });
+          doc.setTextColor(110);
+          doc.text(i + ' / ' + totalPages, pageW / 2, pageH - 4, { align: 'center' });
           doc.setTextColor(0);
         }
 
         const safeName = title.replace(/[^\w\s-]/g, '').trim().slice(0, 40) || 'question-bank';
         doc.save(safeName + '.pdf');
 
-        statusEl.textContent = `Done — ${questions.length} questions • ${totalPages} page(s)`;
+        statusEl.textContent = `Done — ${questions.length} questions • ${totalPages} page(s) • 2-column`;
         statusEl.className = 'status ok';
       } catch (err) {
         console.error(err);
@@ -210,7 +213,7 @@
       } finally {
         generateBtn.disabled = false;
       }
-    }, 50);
+    }, 40);
   }
 
   generateBtn.addEventListener('click', generatePDF);
