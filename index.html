@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#1a1a2e" />
-  <meta name="description" content="Create print-ready, space-efficient 2-column question bank PDFs. Works offline." />
+  <meta name="description" content="Create print-ready 2-column question bank PDFs for any subject including Math, Physics, Biology. Works offline." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Question Bank PDF Maker</title>
@@ -32,153 +32,73 @@
       line-height: 1.5;
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
-    .container {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 1.25rem;
-    }
-    header {
-      text-align: center;
-      margin-bottom: 1.5rem;
-    }
+    .container { max-width: 720px; margin: 0 auto; padding: 1.25rem; }
+    header { text-align: center; margin-bottom: 1.5rem; }
     h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
       background: linear-gradient(135deg, #818cf8, #c084fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .subtitle {
-      color: var(--muted);
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
+    .subtitle { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
     .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      margin-bottom: 1rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem;
     }
     label {
-      display: block;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 0.4rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted);
+      margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.04em;
     }
     input[type="text"], textarea, select {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      padding: 0.7rem 0.85rem;
-      font-size: 0.95rem;
-      font-family: inherit;
-      transition: border-color 0.15s;
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); padding: 0.7rem 0.85rem;
+      font-size: 0.95rem; font-family: inherit; transition: border-color 0.15s;
     }
-    input:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
     textarea {
-      min-height: 220px;
-      resize: vertical;
-      line-height: 1.45;
+      min-height: 240px; resize: vertical; line-height: 1.45;
       font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
       font-size: 0.875rem;
     }
-    .row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
-    }
-    .hint {
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin-top: 0.35rem;
-    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .hint { font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.4; }
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      width: 100%;
-      padding: 0.9rem 1.25rem;
-      font-size: 1rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      width: 100%; padding: 0.9rem 1.25rem; font-size: 1rem; font-weight: 600;
+      border: none; border-radius: 10px; cursor: pointer;
       transition: background 0.15s, transform 0.1s;
     }
-    .btn-primary {
-      background: var(--accent);
-      color: white;
-      margin-top: 0.75rem;
-    }
+    .btn-primary { background: var(--accent); color: white; margin-top: 0.75rem; }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-primary:active { transform: scale(0.98); }
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .status {
-      text-align: center;
-      font-size: 0.875rem;
-      margin-top: 0.75rem;
-      min-height: 1.25rem;
-    }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .status { text-align: center; font-size: 0.875rem; margin-top: 0.75rem; min-height: 1.25rem; }
     .status.ok { color: var(--success); }
     .status.err { color: #f87171; }
-    footer {
-      text-align: center;
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin-top: 2rem;
-      padding-bottom: 1rem;
-    }
+    footer { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 2rem; padding-bottom: 1rem; }
     #offlineBadge {
-      display: none;
-      align-items: center;
-      gap: 0.35rem;
-      background: #065f46;
-      color: #a7f3d0;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      margin-bottom: 1rem;
+      display: none; align-items: center; gap: 0.35rem; background: #065f46;
+      color: #a7f3d0; font-size: 0.75rem; font-weight: 600;
+      padding: 0.25rem 0.6rem; border-radius: 999px; margin-bottom: 1rem;
     }
     #installBanner {
-      display: none;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.9rem 1rem;
-      margin-bottom: 1rem;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
+      display: none; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.9rem 1rem; margin-bottom: 1rem;
+      align-items: center; justify-content: space-between; gap: 0.75rem;
     }
     #installBanner.show { display: flex; }
     #installBanner p { font-size: 0.875rem; color: var(--muted); }
     #installBtn {
-      flex-shrink: 0;
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 0.5rem 0.9rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
+      flex-shrink: 0; background: var(--accent); color: white; border: none;
+      border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.8rem; font-weight: 600; cursor: pointer;
     }
+    .symbols {
+      display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem;
+    }
+    .symbols button {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 0.25rem 0.5rem; font-size: 0.9rem; cursor: pointer;
+    }
+    .symbols button:hover { border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -195,18 +115,39 @@
 
     <header>
       <h1>Question Bank PDF Maker</h1>
-      <p class="subtitle">Print-ready 2-column • Offline • Space-efficient</p>
+      <p class="subtitle">2 side-by-side boxes • Math & Science ready • Offline</p>
     </header>
 
     <div class="card">
       <label for="title">Title</label>
-      <input type="text" id="title" placeholder="e.g. Model Set-2 / Class 10 Geography" value="Question Bank" />
+      <input type="text" id="title" placeholder="e.g. Physics Model Set / Class 10 Math" value="Question Bank" />
     </div>
 
     <div class="card">
       <label for="questions">Questions</label>
-      <textarea id="questions" placeholder="Paste questions here.\n\nSeparate each question with a blank line.\n\nExample:\nWhat is a plough?\n\nWhat is a steam engine?\n\nWho invented the telescope?"></textarea>
-      <p class="hint">Tip: Put a blank line between questions so multi-line ones stay together.</p>
+      <textarea id="questions" placeholder="Paste questions here. Separate each question with a blank line.\n\nExamples:\nFind the value of √(16 + 9)\n\nWhat is the formula for kinetic energy?\nK.E. = ½ mv²\n\nWrite the electronic configuration of Sodium (Na).\n\nExplain the process of photosynthesis."></textarea>
+      <p class="hint">
+        • Put a <strong>blank line</strong> between questions so multi-line ones stay together.<br>
+        • Math & science symbols (√ π ² ³ ≤ ≥ → Δ etc.) are preserved.
+      </p>
+      <div class="symbols" id="symbolBar">
+        <button type="button" data-s="√">√</button>
+        <button type="button" data-s="π">π</button>
+        <button type="button" data-s="²">²</button>
+        <button type="button" data-s="³">³</button>
+        <button type="button" data-s="½">½</button>
+        <button type="button" data-s="≤">≤</button>
+        <button type="button" data-s="≥">≥</button>
+        <button type="button" data-s="≠">≠</button>
+        <button type="button" data-s="→">→</button>
+        <button type="button" data-s="Δ">Δ</button>
+        <button type="button" data-s="θ">θ</button>
+        <button type="button" data-s="α">α</button>
+        <button type="button" data-s="β">β</button>
+        <button type="button" data-s="∞">∞</button>
+        <button type="button" data-s="°">°</button>
+        <button type="button" data-s="±">±</button>
+      </div>
     </div>
 
     <div class="card">
@@ -215,7 +156,7 @@
           <label for="fontSize">Font size (pt)</label>
           <select id="fontSize">
             <option value="7">7 – ultra compact</option>
-            <option value="8" selected>8 – compact (recommended)</option>
+            <option value="8" selected>8 – compact</option>
             <option value="9">9 – readable</option>
             <option value="10">10 – standard</option>
           </select>
@@ -232,19 +173,19 @@
       </div>
       <div class="row" style="margin-top:0.75rem">
         <div>
-          <label for="colGap">Column gap (mm)</label>
+          <label for="colGap">Gap between boxes (mm)</label>
           <select id="colGap">
-            <option value="4">4 – tight</option>
-            <option value="6">6 – balanced</option>
+            <option value="5">5 – tight</option>
             <option value="8" selected>8 – recommended</option>
+            <option value="10">10 – airy</option>
           </select>
         </div>
         <div>
           <label for="lineHeight">Line height</label>
           <select id="lineHeight">
-            <option value="1.15">1.15 – dense</option>
-            <option value="1.25">1.25 – compact</option>
+            <option value="1.2">1.2 – dense</option>
             <option value="1.35" selected>1.35 – recommended</option>
+            <option value="1.5">1.5 – spacious</option>
           </select>
         </div>
       </div>
@@ -257,13 +198,27 @@
     <p class="status" id="status"></p>
 
     <footer>
-      Works fully offline after first load • Installable on phone & desktop • No data leaves your device
+      Two boxes side-by-side • Works offline • Math & Science symbols supported
     </footer>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="app.js"></script>
   <script>
+    // Symbol insertion buttons
+    document.getElementById('symbolBar').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-s]');
+      if (!btn) return;
+      const ta = document.getElementById('questions');
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const sym = btn.getAttribute('data-s');
+      ta.value = ta.value.slice(0, start) + sym + ta.value.slice(end);
+      ta.selectionStart = ta.selectionEnd = start + sym.length;
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+    });
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')

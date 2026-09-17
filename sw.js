@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qb-pdf-maker-v2';
+const CACHE_NAME = 'qb-pdf-maker-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -48,7 +48,6 @@ self.addEventListener('fetch', (event) => {
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }
-          // Fallback for jsPDF if offline and not cached yet
           if (event.request.url.includes('jspdf')) {
             return caches.match('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
           }

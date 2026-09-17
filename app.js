@@ -38,7 +38,7 @@
     deferredPrompt = null;
   });
 
-  // Prefer blank-line blocks so multi-line questions stay intact
+  // Keep multi-line questions together (blank-line separated)
   function parseQuestions(raw) {
     const text = (raw || '').replace(/\r\n/g, '\n').trim();
     if (!text) return [];
@@ -68,107 +68,108 @@
 
     setTimeout(() => {
       try {
-        const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const pageW = 210;
         const pageH = 297;
 
-        // --- Layout constants ---
+        // ---------- Layout (two boxes side-by-side) ----------
         const usableW = pageW - 2 * margin;
-        const colW = (usableW - colGap) / 2;
-        const pad = 1.5;                    // inner padding inside each column
-        const textW = colW - pad * 2;       // actual width available for text
+        const boxW = (usableW - colGap) / 2;
+        const boxPad = 2.5;                 // padding inside each box
+        const textW = boxW - boxPad * 2;    // safe text width
 
-        const leftX  = margin + pad;
-        const rightX = margin + colW + colGap + pad;
-        const midX   = margin + colW + colGap / 2;
+        const leftBoxX  = margin;
+        const rightBoxX = margin + boxW + colGap;
 
-        // --- Title ---
+        // ---------- Title ----------
         doc.setFont('helvetica', 'bold');
         const titleSize = Math.min(Math.max(fontSize + 2, 10), 13);
         doc.setFontSize(titleSize);
         const titleLines = doc.splitTextToSize(title, usableW - 4);
-        let yPos = margin + 2;
+        let yPos = margin + 1;
         titleLines.forEach(line => {
           doc.text(line, pageW / 2, yPos, { align: 'center' });
           yPos += titleSize * 0.42;
         });
-        yPos += 1.5;
+        yPos += 2;
 
-        // separator line under title
-        doc.setDrawColor(140);
+        // thin rule under title
+        doc.setDrawColor(130);
         doc.setLineWidth(0.3);
         doc.line(margin, yPos, pageW - margin, yPos);
         yPos += 3;
 
-        // --- Body setup ---
-        // 1 point = 0.352778 mm
-        const lineH = Math.max(fontSize * 0.352778 * lhMult, fontSize * 0.42);
-        const bottomLimit = pageH - margin - 6;
-        const qGap = lineH * 0.45;          // space after each question
+        // Body metrics
+        const lineH = Math.max(fontSize * 0.352778 * lhMult, fontSize * 0.45);
+        const bottomLimit = pageH - margin - 7;
+        const qGap = lineH * 0.5;
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(fontSize);
-        doc.setTextColor(15);
+        doc.setTextColor(20);
 
         // =====================================================
-        // Column state
+        // Two-box page model
         // =====================================================
-        let col = 0;                        // 0 = left, 1 = right
-        let colY = [yPos, yPos];            // current baseline Y for each column
+        let col = 0;                         // 0 = left box, 1 = right box
+        let colY = [yPos + boxPad, yPos + boxPad];
+        let pageTop = yPos;                  // top of the boxes on current page
 
-        function xOf(c) {
-          return c === 0 ? leftX : rightX;
+        function boxX(c) {
+          return (c === 0 ? leftBoxX : rightBoxX) + boxPad;
         }
 
-        function drawVLine(top) {
-          doc.setDrawColor(180);
-          doc.setLineWidth(0.2);
-          doc.line(midX, top, midX, bottomLimit);
+        function drawBoxes(top) {
+          const h = bottomLimit - top;
+          doc.setDrawColor(160);
+          doc.setLineWidth(0.35);
+          // left box
+          doc.rect(leftBoxX, top, boxW, h);
+          // right box
+          doc.rect(rightBoxX, top, boxW, h);
         }
 
-        // Draw divider for the first page
-        drawVLine(yPos);
+        // first page boxes
+        drawBoxes(pageTop);
 
-        function goNextColumnOrPage() {
+        function newPage() {
+          doc.addPage();
+          pageTop = margin;
+          col = 0;
+          colY = [pageTop + boxPad, pageTop + boxPad];
+          drawBoxes(pageTop);
+        }
+
+        function advance() {
           if (col === 0) {
             col = 1;
-            // right column starts at the same top as left
           } else {
-            doc.addPage();
-            col = 0;
-            colY = [margin, margin];
-            drawVLine(margin);
+            newPage();
           }
         }
 
-        // Pre-wrap every question to the exact text width of one column
+        // Pre-wrap every question to the exact text width of one box
         const blocks = questions.map((q, i) => {
+          // Preserve math/science symbols (Unicode is kept as-is)
           const txt = (i + 1) + '. ' + q;
           return doc.splitTextToSize(txt, textW);
         });
 
-        // ---- Main placement loop ----
+        // ---- Place questions into the two boxes ----
         blocks.forEach((lines) => {
           const needed = lines.length * lineH + qGap;
 
-          // If the whole question does not fit in the remaining space of
-          // the current column, move to the next column / page first.
-          if (colY[col] + needed > bottomLimit) {
-            goNextColumnOrPage();
+          // If the whole question does not fit in the remaining space
+          // of the current box, move to the next box / page.
+          if (colY[col] + needed > bottomLimit - boxPad) {
+            advance();
           }
 
-          // Write the lines of this question
           lines.forEach(line => {
-            // Safety: if somehow still no room, force next column
-            if (colY[col] + lineH > bottomLimit) {
-              goNextColumnOrPage();
+            if (colY[col] + lineH > bottomLimit - boxPad) {
+              advance();
             }
-            doc.text(line, xOf(col), colY[col]);
+            doc.text(line, boxX(col), colY[col]);
             colY[col] += lineH;
           });
 
@@ -182,13 +183,13 @@
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(7);
           doc.setTextColor(110);
-          doc.text(String(p) + ' / ' + totalPages, pageW / 2, pageH - 4, { align: 'center' });
+          doc.text(p + ' / ' + totalPages, pageW / 2, pageH - 4, { align: 'center' });
         }
 
         const safeName = title.replace(/[^\w\s\-]/g, '').trim().slice(0, 45) || 'question-bank';
         doc.save(safeName + '.pdf');
 
-        statusEl.textContent = `Done — ${questions.length} questions • ${totalPages} page(s) • 2-column`;
+        statusEl.textContent = `Done — ${questions.length} questions • ${totalPages} page(s) • 2 boxes`;
         statusEl.className = 'status ok';
       } catch (err) {
         console.error(err);
@@ -202,7 +203,7 @@
 
   generateBtn.addEventListener('click', generatePDF);
 
-  // Restore draft
+  // Draft restore
   try {
     const saved = localStorage.getItem('qb-draft');
     if (saved) {
