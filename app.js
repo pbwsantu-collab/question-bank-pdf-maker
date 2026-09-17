@@ -73,81 +73,90 @@
         const pageW = 210;
         const pageH = 297;
 
-        // Title
+        // ---- Title ----
         doc.setFont('helvetica', 'bold');
         const titleSize = Math.min(Math.max(fontSize + 2, 10), 13);
         doc.setFontSize(titleSize);
-        let yPos = margin + 1;
+        let yPos = margin + 2;
         doc.splitTextToSize(title, pageW - 2 * margin - 4).forEach(line => {
           doc.text(line, pageW / 2, yPos, { align: 'center' });
-          yPos += titleSize * 0.42;
+          yPos += Math.round(titleSize * 0.4 * 10) / 10;
         });
-        yPos += 1.5;
-        doc.setDrawColor(130);
-        doc.setLineWidth(0.3);
+        yPos += 2;
+        doc.setDrawColor(120);
+        doc.setLineWidth(0.25);
         doc.line(margin, yPos, pageW - margin, yPos);
         yPos += 3;
 
-        const lineH = Math.max(fontSize * 0.352778 * lhMult, fontSize * 0.5);
+        // Fixed, rounded line height for even spacing (no fractional jitter)
+        const lineH = Math.round(fontSize * 0.352778 * lhMult * 10) / 10;
         const bottomLimit = pageH - margin - 8;
-        const qGap = lineH * 0.5;
+        const qGap = Math.round(lineH * 0.45 * 10) / 10;
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(fontSize);
-        doc.setTextColor(20);
+        doc.setTextColor(0);
 
         // ========== SINGLE COLUMN ==========
         if (layout === 'single') {
-          const textW = pageW - 2 * margin - 6;
+          const textW = pageW - 2 * margin - 8;
           let y = yPos;
 
           questions.forEach((q, i) => {
             const lines = doc.splitTextToSize((i + 1) + '. ' + q, textW);
-            if (y + lines.length * lineH + qGap > bottomLimit) {
+            const blockH = lines.length * lineH + qGap;
+            if (y + blockH > bottomLimit) {
               doc.addPage();
               y = margin;
             }
             lines.forEach(line => {
-              if (y + lineH > bottomLimit) {
-                doc.addPage();
-                y = margin;
-              }
-              doc.text(line, margin + 3, y);
+              doc.text(line, margin + 4, y);
               y += lineH;
             });
             y += qGap;
           });
 
-        // ========== DOUBLE COLUMN (split questions in half) ==========
+        // ========== DOUBLE COLUMN ==========
         } else {
           const usableW = pageW - 2 * margin;
           const boxW = (usableW - colGap) / 2;
-          const pad = 3.5;
-          const textW = Math.floor((boxW - 2 * pad) * 0.88);
+          const pad = 4;
+          // Conservative width so letters never crowd the border
+          const textW = Math.floor((boxW - 2 * pad) * 0.90);
           const leftX = margin + pad;
           const rightX = margin + boxW + colGap + pad;
 
-          // Split the question list into two halves
-          const mid = Math.ceil(questions.length / 2);
-          const leftList = questions.slice(0, mid);
-          const rightList = questions.slice(mid);
+          // Pre-wrap every question
+          const allBlocks = questions.map((q, i) => ({
+            num: i + 1,
+            lines: doc.splitTextToSize((i + 1) + '. ' + q, textW),
+            height: 0
+          }));
+          allBlocks.forEach(b => {
+            b.height = b.lines.length * lineH + qGap;
+          });
 
-          function makeBlocks(list, startNum) {
-            return list.map((q, i) =>
-              doc.splitTextToSize((startNum + i) + '. ' + q, textW)
-            );
-          }
-          const leftBlocks = makeBlocks(leftList, 1);
-          const rightBlocks = makeBlocks(rightList, mid + 1);
+          // Balance by height (not just count) so both columns look even
+          const leftBlocks = [];
+          const rightBlocks = [];
+          let leftH = 0, rightH = 0;
+          allBlocks.forEach(b => {
+            if (leftH <= rightH) {
+              leftBlocks.push(b);
+              leftH += b.height;
+            } else {
+              rightBlocks.push(b);
+              rightH += b.height;
+            }
+          });
 
-          let lIdx = 0;
-          let rIdx = 0;
+          let lIdx = 0, rIdx = 0;
           let pageTop = yPos;
 
           function drawBoxes(top) {
             const h = bottomLimit - top;
-            doc.setDrawColor(140);
-            doc.setLineWidth(0.35);
+            doc.setDrawColor(130);
+            doc.setLineWidth(0.3);
             doc.rect(margin, top, boxW, h);
             doc.rect(margin + boxW + colGap, top, boxW, h);
           }
@@ -157,12 +166,10 @@
             let ly = pageTop + pad;
             let ry = pageTop + pad;
 
-            // Fill left box on this page
             while (lIdx < leftBlocks.length) {
-              const lines = leftBlocks[lIdx];
-              const needed = lines.length * lineH + qGap;
-              if (ly + needed > bottomLimit) break;
-              lines.forEach(line => {
+              const b = leftBlocks[lIdx];
+              if (ly + b.height > bottomLimit + 0.5) break;
+              b.lines.forEach(line => {
                 doc.text(line, leftX, ly);
                 ly += lineH;
               });
@@ -170,12 +177,10 @@
               lIdx++;
             }
 
-            // Fill right box on this page
             while (rIdx < rightBlocks.length) {
-              const lines = rightBlocks[rIdx];
-              const needed = lines.length * lineH + qGap;
-              if (ry + needed > bottomLimit) break;
-              lines.forEach(line => {
+              const b = rightBlocks[rIdx];
+              if (ry + b.height > bottomLimit + 0.5) break;
+              b.lines.forEach(line => {
                 doc.text(line, rightX, ry);
                 ry += lineH;
               });
@@ -186,9 +191,7 @@
             if (lIdx < leftBlocks.length || rIdx < rightBlocks.length) {
               doc.addPage();
               pageTop = margin;
-            } else {
-              break;
-            }
+            } else break;
           }
         }
 
@@ -198,7 +201,7 @@
           doc.setPage(p);
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(7);
-          doc.setTextColor(110);
+          doc.setTextColor(100);
           doc.text(p + ' / ' + totalPages, pageW / 2, pageH - 4, { align: 'center' });
         }
 
