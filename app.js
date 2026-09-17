@@ -75,8 +75,9 @@
         // ---------- Layout (two boxes side-by-side) ----------
         const usableW = pageW - 2 * margin;
         const boxW = (usableW - colGap) / 2;
-        const boxPad = 2.5;                 // padding inside each box
-        const textW = boxW - boxPad * 2;    // safe text width
+        const boxPad = 3.2;                 // padding inside each box
+        // Use ~90% of available width so Helvetica measurement never overflows
+        const textW = (boxW - boxPad * 2) * 0.92;
 
         const leftBoxX  = margin;
         const rightBoxX = margin + boxW + colGap;

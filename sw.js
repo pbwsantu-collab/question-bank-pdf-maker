@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qb-pdf-maker-v3';
+const CACHE_NAME = 'qb-pdf-maker-v4';
 const ASSETS = [
   './',
   './index.html',
